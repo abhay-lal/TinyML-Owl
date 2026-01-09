@@ -4,7 +4,8 @@ from torch.utils.data import Dataset
 import os
 
 class OwlSoundDataset(Dataset):
-    def __init__(self, metadata_df, audio_dir, fold_filter=None, sample_rate=16000, duration=3.0):
+    def __init__(self, metadata_df, audio_dir, fold_filter=None, sample_rate=16000, duration=3.0, channels=3):
+        self.channels = channels
         self.sample_rate = sample_rate
         self.target_length = int(sample_rate * duration)
         self.audio_dir = audio_dir
@@ -54,6 +55,6 @@ class OwlSoundDataset(Dataset):
 
         # normalize and repeat to 3 channels
         mel_db = (mel_db - mel_db.mean()) / (mel_db.std() + 1e-6)
-        mel_db = mel_db.repeat(3, 1, 1) # [3, 128, time]
+        mel_db = mel_db.repeat(self.channels, 1, 1) # [3, 128, time]
 
         return mel_db, label

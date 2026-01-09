@@ -1,10 +1,13 @@
-import os
-import sys
 import torch
 import torch.nn as nn
-import tensorflow as tf
-import onnx
-from onnx_tf.backend import prepare  
+from torchvision import models
+from torch.utils.data import DataLoader
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
+from dataset import OwlSoundDataset
+from tqdm import tqdm
+import os
 
 from torch import nn
 from torch import Tensor
@@ -125,34 +128,90 @@ class TinyAudioCNN_MBConv(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+
+# --- Config ---
+DATA_DIR = "../buowset1.1"
+AUDIO_DIR = os.path.join(DATA_DIR, "audio")
+META_FILE = os.path.join(DATA_DIR, "meta", "metadata.csv")
+BATCH_SIZE = 128
 NUM_CLASSES = 6
-model = TinyAudioCNN_MBConv(num_classes=NUM_CLASSES)
-state_dict = torch.load("../models/buowset1.1/buow_tinycnn_mbconv.pth", map_location='cpu')
-model.load_state_dict(state_dict)
-model.eval()
-print("Loaded TinyAudioCNN_MBConv model with 1-channel input and 6-class output.")
+FOLD = 4
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-dummy_input = torch.randn(1, 1, 64, 258)
-torch.onnx.export(
-    model, dummy_input, "buow_tinycnn_mbconv.onnx",
-    input_names=["input"], output_names=["output"],
-    opset_version=11
-)
-print("Exported to ONNX: buow_tinycnn_mbconv.onnx")
+# Ensure output directory exists
+os.makedirs("../graphs", exist_ok=True)
 
-onnx_model = onnx.load("buow_tinycnn_mbconv.onnx")
-tf_rep = prepare(onnx_model)
-tf_rep.export_graph("buow_tinycnn_mbconv")
-print("Converted to TensorFlow SavedModel at ./buow_tinycnn_mbconv")
+# --- Load metadata and dataset ---
+metadata = pd.read_csv(META_FILE)
+test_df = metadata[metadata["fold"] == FOLD].reset_index(drop=True)
+test_dataset = OwlSoundDataset(test_df, AUDIO_DIR, channels=3)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-converter = tf.lite.TFLiteConverter.from_saved_model("buow_tinycnn_mbconv")
-converter.optimizations = [tf.lite.Optimize.DEFAULT]  # Enable quantization
-tflite_model = converter.convert()
+# --- Evaluation function ---
+accuracies = {}
 
-with open("buow_tinycnn_mbconv.tflite", "wb") as f:
-    f.write(tflite_model)
+def evaluate(model, name):
+    model.eval()
+    preds, labels = [], []
 
-print("Converted to TFLite: buow_tinycnn_mbconv.tflite")
+    with torch.no_grad():
+        for x, y in tqdm(test_loader, desc=f"Evaluating {name}"):
+            x, y = x.to(DEVICE), y.to(DEVICE)
+            out = model(x)
+            p = torch.argmax(out, axis=1)
+            preds.extend(p.cpu().numpy())
+            labels.extend(y.cpu().numpy())
 
-os.system("xxd -i buow_tinycnn_mbconv.tflite > buow_tinycnn_mbconv.h")
-print("Created buow_tinycnn_mbconv.h")
+    acc = sum([p == l for p, l in zip(preds, labels)]) / len(labels)
+    accuracies[name] = acc
+
+    print(f"\n{name} Accuracy: {acc:.4f}")
+    report_dict = classification_report(labels, preds, output_dict=True)
+    print(classification_report(labels, preds))
+
+    # Save classification report to CSV
+    report_df = pd.DataFrame(report_dict).transpose()
+    report_df.to_csv(f"../graphs/{name}_classification_report.csv")
+
+    # Save confusion matrix
+    cm = confusion_matrix(labels, preds)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(cmap=plt.cm.Blues)
+    plt.title(f"{name} - Confusion Matrix")
+    plt.savefig(f"../graphs/{name}_confusion_matrix.png")
+    plt.show()
+
+# tinycnn = TinyAudioCNN(NUM_CLASSES)
+# tinycnn.load_state_dict(torch.load("../models/buowset1.1/buow_tinycnn.pth"))
+# tinycnn.to(DEVICE)
+# evaluate(tinycnn, 'TinyCNN_new')
+
+# tinycnn_mbconv = TinyAudioCNN_MBConv(NUM_CLASSES)
+# tinycnn_mbconv.load_state_dict(torch.load("../models/buowset1.1/buow_tinycnn_mbconv.pth"))
+# tinycnn_mbconv.to(DEVICE)
+# evaluate(tinycnn_mbconv, 'TinyCNN_MBConv')
+
+# --- Evaluate MobileNetV2 ---
+mobilenet = models.mobilenet_v2(pretrained=False)
+mobilenet.classifier[1] = nn.Linear(mobilenet.last_channel, NUM_CLASSES)
+mobilenet.load_state_dict(torch.load("../models/buowset1.1/mobilenetv2_owl.pth", map_location=DEVICE))
+mobilenet.to(DEVICE)
+evaluate(mobilenet, "MobileNetV2")
+
+# # --- Evaluate ProxylessNAS ---
+proxyless = torch.hub.load('mit-han-lab/ProxylessNAS', 'proxyless_mobile', pretrained=True)
+proxyless.classifier = nn.Linear(proxyless.classifier.in_features, NUM_CLASSES)
+proxyless.load_state_dict(torch.load("../models/buowset1.1/proxylessnas_owl.pth", map_location=DEVICE))
+proxyless.to(DEVICE)
+evaluate(proxyless, "ProxylessNAS")
+
+# --- Accuracy Comparison Plot ---
+plt.figure(figsize=(6, 4))
+plt.bar(accuracies.keys(), accuracies.values(), color=["skyblue", "salmon"])
+plt.ylim(0, 1)
+plt.ylabel("Accuracy")
+plt.title("Test Accuracy Comparison")
+plt.grid(True, linestyle="--", alpha=0.6)
+plt.tight_layout()
+plt.savefig("../graphs/test_accuracy_comparison.png")
+plt.show()

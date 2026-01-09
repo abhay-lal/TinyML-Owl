@@ -10,7 +10,7 @@ from tqdm import tqdm
 import os
 
 # --- Config ---
-DATA_DIR = "../buowset"
+DATA_DIR = "../buowset1.1"
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 META_FILE = os.path.join(DATA_DIR, "meta", "metadata.csv")
 BATCH_SIZE = 128
@@ -64,14 +64,14 @@ def evaluate(model, name):
 # --- Evaluate MobileNetV2 ---
 mobilenet = models.mobilenet_v2(pretrained=False)
 mobilenet.classifier[1] = nn.Linear(mobilenet.last_channel, NUM_CLASSES)
-mobilenet.load_state_dict(torch.load("../models/mobilenetv2_owl.pth", map_location=DEVICE))
+mobilenet.load_state_dict(torch.load("../models/buowset1.0/mobilenetv2_owl.pth", map_location=DEVICE))
 mobilenet.to(DEVICE)
 evaluate(mobilenet, "MobileNetV2")
 
 # --- Evaluate ProxylessNAS ---
 proxyless = torch.hub.load('mit-han-lab/ProxylessNAS', 'proxyless_mobile', pretrained=True)
 proxyless.classifier = nn.Linear(proxyless.classifier.in_features, NUM_CLASSES)
-proxyless.load_state_dict(torch.load("../models/proxylessnas_owl.pth", map_location=DEVICE))
+proxyless.load_state_dict(torch.load("../models/buowset1.0/proxylessnas_owl.pth", map_location=DEVICE))
 proxyless.to(DEVICE)
 evaluate(proxyless, "ProxylessNAS")
 

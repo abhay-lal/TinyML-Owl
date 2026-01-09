@@ -11,13 +11,13 @@ import os
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-torchaudio.set_audio_backend("soundfile")
+# torchaudio.set_audio_backend("soundfile")
 
 # === Configuration ===
-DATA_DIR = "../buowset"
+DATA_DIR = "../buowset1.1"
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 META_FILE = os.path.join(DATA_DIR, "meta", "metadata.csv")
-MODEL_PATH = "../models/mobilenetv2_owl.pth"
+MODEL_PATH = "../models/buowset1.1/mobilenetv2_owl.pth"
 BATCH_SIZE = 128
 NUM_EPOCHS = 20
 LEARNING_RATE = 0.001
