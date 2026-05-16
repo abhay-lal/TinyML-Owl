@@ -14,10 +14,10 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 # torchaudio.set_audio_backend("soundfile")
 
 # === Configuration ===
-DATA_DIR = "../buowset1.1"
+DATA_DIR = "/home/r.hoang.198/rhoangOWL/buowset1.33"
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 META_FILE = os.path.join(DATA_DIR, "meta", "metadata.csv")
-MODEL_PATH = "../models/buowset1.1/mobilenetv2_owl.pth"
+MODEL_PATH = "/home/r.hoang.198/rhoangOWL/models/mobilenetv2_1.33"
 BATCH_SIZE = 128
 NUM_EPOCHS = 20
 LEARNING_RATE = 0.001
@@ -113,7 +113,7 @@ metrics_df = pd.DataFrame({
     "val_recall": val_recalls,
     "val_f1": val_f1s
 })
-metrics_df.to_csv("../graphs/mobilenetv2_training_metrics.csv", index=False)
+metrics_df.to_csv("./graphs/mobilenetv2_training_metrics.csv", index=False)
 
 plt.figure()
 plt.plot(metrics_df["epoch"], metrics_df["train_loss"], label="Train Loss")
@@ -122,7 +122,7 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.title("Training Loss")
 plt.legend()
-plt.savefig("../graphs/mobilenetv2_train_loss.png")
+plt.savefig("./graphs/mobilenetv2_train_loss.png")
 
 plt.figure()
 plt.plot(metrics_df["epoch"], metrics_df["val_accuracy"], label="Accuracy")
@@ -133,6 +133,6 @@ plt.xlabel("Epoch")
 plt.ylabel("Score")
 plt.title("Validation Metrics")
 plt.legend()
-plt.savefig("../graphs/mobilenetv2_val_metrics.png")
+plt.savefig("./graphs/mobilenetv2_val_metrics.png")
 
 print("Training complete. Metrics saved to CSV and PNGs.")

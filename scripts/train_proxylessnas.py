@@ -14,10 +14,10 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 # torchaudio.set_audio_backend("soundfile")
 
 # === Configuration ===
-DATA_DIR = "../buowset1.1"
+DATA_DIR = "/home/r.hoang.198/rhoangOWL/buowset1.33"
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 META_FILE = os.path.join(DATA_DIR, "meta", "metadata.csv")
-MODEL_PATH = "../models/buowset1.1/proxylessnas_owl.pth"
+MODEL_PATH = "/home/r.hoang.198/rhoangOWL/models/proxylessnas_1.33"
 BATCH_SIZE = 128
 NUM_EPOCHS = 20
 LEARNING_RATE = 0.001
